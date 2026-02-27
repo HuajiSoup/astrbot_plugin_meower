@@ -21,6 +21,14 @@ headers = {
     'Referer': 'https://image.baidu.com'
 }
 
+async def urlAccessible(session: aiohttp.ClientSession, url: str, timeout: int = 10):
+    try:
+        timeoutObj = aiohttp.ClientTimeout(timeout)
+        async with session.head(url, timeout=timeoutObj, allow_redirects=True) as response:
+            return response.status == 200
+    except:
+        return False
+
 @register("astrbot_plugin_meower", "HuajiSoup", "AstrBot Meower 插件，纯粹用来测试。", "0.0.3")
 class MyPlugin(Star):
     def __init__(self, context: Context):
@@ -117,9 +125,21 @@ class MyPlugin(Star):
                         return
                     data = await response.json(content_type=None)
             
-            images = [img.get("middleURL") for img in data.get("data") if img.get("middleURL")]
-            result = random.choice(images)
-            yield event.image_result(result)
+                # get all available possible images
+                images = [{
+                    "low": img.get("middleURL"),
+                    "high": img.get("replaceUrl")[0].get("ObjUrl", ""),
+                } for img in data.get("data") if img.get("middleURL") and img.get("replaceUrl")]
+
+                result = random.choice(images)
+                res_high = result.get("high", "")
+                res_low = result.get("low", "")
+
+                if (res_high != "" and await urlAccessible(session, res_high)):
+                    yield event.image_result(res_high)
+                    return
+                yield event.image_result(res_low)
+            
         except aiohttp.ClientError as e:
             logger.error(f"网络请求出现异常，报错信息如下：{e}")
             yield event.plain_result("555，滑稽水怪断网了喵")
