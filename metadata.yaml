@@ -1,6 +1,6 @@
 name: astrbot_plugin_meower
 display_name: Meower
 desc: AstrBot Meower 插件，是一个十分滑稽的插件，综合了各种没用的杂物功能，用/huaji调用。
-version: v0.0.3
-author: Soulter
+version: v0.0.5
+author: HuajiSoup233
 repo: https://github.com/HuajiSoup/astrbot_plugin_meower

@@ -4,6 +4,7 @@ from astrbot.api import logger
 
 import random
 import aiohttp
+import re
 
 quotes = [
     "滑稽是人类进步的阶梯。",
@@ -113,8 +114,9 @@ class MyPlugin(Star):
         keyword: str = "香蕉", 
     ):
         """搜索关键词图片"""
-        page = random.randint(0, 200)
-        url = f"https://image.baidu.com/search/acjson?tn=resultjson_com&ipn=rj&word={keyword}&pn={page}&rn=15"
+        page = random.randint(0, 300)
+        page_len = 10
+        url = f"https://image.baidu.com/search/acjson?tn=resultjson_com&ipn=rj&word={keyword}&pn={page}&rn={page_len}"
 
         try:
             async with aiohttp.ClientSession(headers=headers) as session:
@@ -126,19 +128,25 @@ class MyPlugin(Star):
                     data = await response.json(content_type=None)
             
                 # get all available possible images
-                images = [{
-                    "low": img.get("middleURL"),
-                    "high": img.get("replaceUrl")[0].get("ObjUrl", ""),
-                } for img in data.get("data") if img.get("middleURL") and img.get("replaceUrl")]
+                images = [
+                    {
+                        "low": img.get("middleURL"),
+                        "high": img.get("replaceUrl")[0].get("ObjUrl", ""),
+                    } 
+                    for img in data.get("data") if img.get("middleURL") and img.get("replaceUrl")
+                ]
 
                 result = random.choice(images)
-                res_high = result.get("high", "")
-                res_low = result.get("low", "")
+                res_low = result.get("low", "")     # 100% exist, but bad quality
+                res_high = result.get("high", "")   # not sure exist, but high quality
 
-                if (res_high != "" and await urlAccessible(session, res_high)):
-                    yield event.image_result(res_high)
-                    return
-                yield event.image_result(res_low)
+                high_access = re.match(r'https?://.+', res_high) and await urlAccessible(session, res_high)
+                if high_access:
+                    res = res_high
+                else:
+                    res = res_low
+                yield event.image_result(res)
+                yield event.plain_result(f"滑稽水怪找到{keyword}的图片了喵！原链接在这：\n{res}")
             
         except aiohttp.ClientError as e:
             logger.error(f"网络请求出现异常，报错信息如下：{e}")
